@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Our Virtual Date 🍷</title>
+    
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥰</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700&family=Space+Mono&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        :root {
+            --primary: #ff4d6d;
+            --primary-hover: #e63e5c;
+            --text-main: #333333;
+            --text-muted: #666666;
+            --border-radius: 20px;
+        }
+
+        body {
+            margin: 0; padding: 0; 
+            font-family: 'Nunito', sans-serif;
+            color: var(--text-main);
+            padding-bottom: 120px; 
+            -webkit-tap-highlight-color: transparent;
+            overflow-x: hidden;
+            background-color: #ffe5ec; /* fallback */
+        }
+
+        /* --- HYPER-DYNAMIC AESTHETIC BACKGROUND --- */
+        body::before {
+            content: "";
+            position: fixed;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            z-index: -2;
+            background: linear-gradient(
+                60deg,
+                #ffb3c6,
+                #ffe5ec,
+                #ffc2d1,
+                #ff8fa3,
+                #ffb3c6
+            );
+            background-size: 300% 300%;
+            animation: gradientPulse 12s ease-in-out infinite;
+        }
+
+        @keyframes gradientPulse {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .ambient-bg {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            z-index: -1; overflow: hidden; pointer-events: none;
+        }
+        .blob {
+            position: absolute; border-radius: 50%; filter: blur(70px);
+            opacity: 0.6; animation: float 10s infinite ease-in-out alternate;
+        }
+        .blob-1 { background: #ff4d6d; width: 45vw; height: 45vw; top: -10%; left: -10%; animation-delay: 0s; }
+        .blob-2 { background: #ffb199; width: 55vw; height: 55vw; bottom: -20%; right: -10%; animation-delay: -3s; }
+
+        @keyframes float {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(40px, 60px) scale(1.15); }
+        }
+
+        /* --- GLASSMORPHISM FOR FOREGROUND --- */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.55); /* Transparent enough to see background movement */
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 8px 32px rgba(255, 117, 140, 0.1);
+        }
+
+        /* --- GDPR CONSENT MODAL (SOLID & CLEAN) --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 240, 243, 0.7); backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 300; transition: opacity 0.4s ease;
+        }
+        .modal-content {
+            background: #ffffff; /* Solid White */
+            width: 90%; max-width: 420px; border-radius: 24px; 
+            padding: 35px 30px; text-align: left; position: relative;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.12); /* Soft, elegant shadow */
+        }
+        .modal-title { font-family: 'Fredoka One', cursive; font-size: 1.5rem; color: var(--primary); margin-bottom: 15px; display: flex; align-items: center; gap: 8px;}
+        .modal-text { font-size: 1rem; color: #444; margin-bottom: 25px; line-height: 1.6; }
+        .modal-buttons { display: flex; gap: 12px; justify-content: flex-end; }
+        
+        .btn-accept { background: var(--primary); color: white; border: none; padding: 12px 24px; border-radius: 50px; font-family: 'Nunito', sans-serif; font-weight: bold; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 15px rgba(255, 77, 109, 0.3); }
+        .btn-accept:hover { background: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(255, 77, 109, 0.4);}
+        .btn-decline { background: #f0f0f0; color: #666; border: none; padding: 12px 24px; border-radius: 50px; font-family: 'Nunito', sans-serif; font-weight: bold; cursor: pointer; transition: all 0.2s; }
+        .btn-decline:hover { background: #e4e4e4; }
+
+        /* --- MAIN CONTENT --- */
+        .header { text-align: center; padding: 50px 20px 30px; }
+        .header h1 { font-family: 'Fredoka One', cursive; color: var(--primary); font-size: 2.5rem; margin: 0 0 10px 0; }
+        .header p { font-size: 1.1rem; color: #444; margin: 0 auto; max-width: 400px; line-height: 1.5; padding: 15px; border-radius: 16px;}
+
+        .container { max-width: 600px; margin: 0 auto; padding: 0 20px; }
+        .section { margin-bottom: 40px; padding: 25px; border-radius: var(--border-radius); }
+        .section-title { font-family: 'Fredoka One', cursive; font-size: 1.3rem; color: #333; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+
+        .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
+
+        .card {
+            border-radius: var(--border-radius); padding: 20px 15px;
+            text-align: center; cursor: pointer; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+            position: relative; display: flex; flex-direction: column; align-items: center; gap: 10px;
+        }
+        .card:active { transform: scale(0.95); }
+        .card.selected {
+            background: rgba(255, 255, 255, 0.95); border-color: white;
+            box-shadow: 0 10px 25px rgba(255, 77, 109, 0.2);
+            transform: translateY(-5px);
+        }
+
+        .emoji { font-size: 2.8rem; margin-bottom: 5px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1)); }
+        .card-title { font-weight: 800; font-size: 1.05rem; margin: 0; color: #222; }
+        .card-desc { font-size: 0.85rem; color: var(--text-muted); margin: 0; line-height: 1.4; }
+
+        .check-icon {
+            position: absolute; top: 12px; right: 12px;
+            background: var(--primary); color: white;
+            width: 26px; height: 26px; border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 0.9rem; font-weight: bold;
+            opacity: 0; transform: scale(0);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 4px 10px rgba(255, 77, 109, 0.4);
+        }
+        .card.selected .check-icon { opacity: 1; transform: scale(1); }
+
+        textarea {
+            width: 100%; padding: 18px; border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.8); font-family: 'Nunito', sans-serif;
+            font-size: 1rem; box-sizing: border-box; resize: none;
+            transition: all 0.3s ease; background: rgba(255, 255, 255, 0.4);
+            color: #333; box-shadow: inset 0 2px 5px rgba(0,0,0,0.02);
+        }
+        textarea::placeholder { color: #888; }
+        textarea:focus { outline: none; background: rgba(255, 255, 255, 0.9); border-color: white; box-shadow: 0 5px 15px rgba(255, 77, 109, 0.1); }
+
+        .footer {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            padding: 20px; box-sizing: border-box; display: flex; justify-content: center; z-index: 100;
+        }
+        .footer-glass {
+            background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
+            border-top: 1px solid rgba(255,255,255,0.6);
+        }
+
+        .submit-btn {
+            background: var(--primary); color: white; border: none; border-radius: 50px;
+            padding: 18px 30px; font-family: 'Fredoka One', cursive;
+            font-size: 1.2rem; width: 100%; max-width: 400px;
+            cursor: pointer; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 8px 25px rgba(255, 77, 109, 0.4);
+        }
+        .submit-btn:hover:not(:disabled) { background: var(--primary-hover); transform: translateY(-3px); box-shadow: 0 12px 30px rgba(255, 77, 109, 0.5); }
+        .submit-btn:disabled { background: rgba(200, 200, 200, 0.8); box-shadow: none; transform: none; cursor: not-allowed; color: #fff;}
+
+        /* --- RECEIPT SCREEN --- */
+        #success-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 240, 243, 0.95); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            z-index: 400; display: flex; flex-direction: column; justify-content: center; align-items: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.5s ease; padding: 20px; box-sizing: border-box;
+        }
+        #success-screen.visible { opacity: 1; pointer-events: auto; }
+        
+        .receipt-card {
+            background: #fff; width: 100%; max-width: 380px; padding: 35px 25px; border-radius: 12px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.15); font-family: 'Space Mono', monospace; 
+            color: #333; position: relative;
+        }
+        .receipt-card::before, .receipt-card::after {
+            content: ''; position: absolute; left: 0; width: 100%; height: 12px; background-size: 24px 24px;
+        }
+        .receipt-card::before { top: -12px; background-image: radial-gradient(circle at 12px 0, transparent 12px, #fff 13px); }
+        .receipt-card::after { bottom: -12px; background-image: radial-gradient(circle at 12px 12px, transparent 12px, #fff 13px); }
+
+        .receipt-header { text-align: center; margin-bottom: 25px; }
+        .receipt-header h2 { font-family: 'Fredoka One', cursive; color: var(--primary); margin: 0 0 5px 0; font-size: 1.8rem; }
+        .receipt-header p { margin: 0; font-size: 0.85rem; color: #777; }
+        
+        .receipt-details { border-top: 2px dashed #ddd; border-bottom: 2px dashed #ddd; padding: 20px 0; margin-bottom: 25px; }
+        .receipt-row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 0.95rem; }
+        .receipt-row:last-child { margin-bottom: 0; }
+        .receipt-label { color: #888; }
+        .receipt-value { font-weight: bold; text-align: right; max-width: 60%; }
+        
+        .receipt-total { display: flex; justify-content: space-between; font-size: 1.1rem; font-weight: bold; margin-bottom: 25px; }
+        .receipt-footer { text-align: center; font-size: 0.85rem; color: #777; margin-bottom: 30px; line-height: 1.5; }
+        
+        .share-btn {
+            background: #fff; color: var(--primary); border: 2px solid var(--primary);
+            padding: 14px 20px; border-radius: 50px; font-family: 'Fredoka One', cursive;
+            font-size: 1.1rem; width: 100%; cursor: pointer; transition: all 0.2s;
+            display: flex; justify-content: center; align-items: center; gap: 8px;
+        }
+        .share-btn:hover { background: var(--primary); color: white; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255, 77, 109, 0.2);}
+
+        @media (max-width: 400px) { .grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+    <div class="ambient-bg">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+    </div>
+
+    <div id="gdpr-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-title">🍪 Cookie & Date Consent</div>
+            <div class="modal-text">
+                <strong>Notice of Mandatory Fun:</strong> By clicking "I Accept", you formally agree to our strictly necessary terms and conditions: going on a virtual date with me.<br><br>
+                This agreement includes, but is not limited to: accepting digital vibes, sharing terrible jokes, and permitting a high likelihood of a great time. Do you consent to the processing of this data?
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-decline" onclick="window.declineTerms()">Decline</button>
+                <button class="btn-accept" onclick="window.acceptTerms()">I Accept</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="header">
+        <h1>Hi Nayanika! 👋</h1>
+        <p class="glass-panel">I want to plan the perfect virtual evening for us. Let's design our date below!</p>
+    </div>
+
+    <div class="container" id="form-container">
+
+        <div class="section glass-panel">
+            <div class="section-title">✨ Step 1: Pick our vibe</div>
+            <div class="grid" id="vibe-grid">
+                <div class="card glass-panel" onclick="window.selectOption('vibe', 'Cozy & Chill', this)">
+                    <div class="check-icon">✓</div>
+                    <div class="emoji">🛋️</div>
+                    <p class="card-title">Cozy & Chill</p>
+                    <p class="card-desc">Sweatpants, blankets, and low-pressure hanging out.</p>
+                </div>
+                <div class="card glass-panel" onclick="window.selectOption('vibe', 'Formal & Fancy', this)">
+                    <div class="check-icon">✓</div>
+                    <div class="emoji">🥂</div>
+                    <p class="card-title">Formal & Fancy</p>
+                    <p class="card-desc">Dressing up, lighting candles, and pretending we're at a Michelin star spot.</p>
+                </div>
+                <div class="card glass-panel" onclick="window.selectOption('vibe', 'Competitive', this)">
+                    <div class="check-icon">✓</div>
+                    <div class="emoji">🏆</div>
+                    <p class="card-title">Competitive</p>
+                    <p class="card-desc">Game faces on. Trash talk highly encouraged.</p>
+                </div>
+                <div class="card glass-panel" onclick="window.selectOption('vibe', 'Deep Dives', this)">
+                    <div class="check-icon">✓</div>
+                    <div class="emoji">🍷</div>
+                    <p class="card-title">Deep Dives</p>
+                    <p class="card-desc">Pouring a drink and getting into the good, existential chats.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section glass-panel">
+            <div class="section-title">🍕 Step 2: What are we having?</div>
+            <div class="grid" id="menu-grid">
+                <div class="card glass-panel" onclick="window.selectOption('menu', 'Delivery Roulette', this)">
+                    <div class="check-icon">✓</div>
+                    <div class="emoji">🥡</div>
+                    <p class="card-title">Delivery Roulette</p>
+                    <p class="card-desc">We both order surprise UberEats for each other.</p>
+                </div>
+                <div class="card glass-panel" onclick="window.selectOption('menu', 'Matching Meals', this)">
+                    <div class="check-icon">✓</div>
+                    <div class="emoji">🍣</div>
+                    <p class="card-title">Matching Meals</p>
+                    <p class="card-desc">We order the same cuisine to eat "together".</p>
+                </div>
+                <div class="card glass-panel" onclick="window.selectOption('menu', 'Home-Cooked', this)">
+                    <div class="check-icon">✓</div>
+                    <div class="emoji">🧑‍🍳</div>
+                    <p class="card-title">We Are The Chefs</p>
+                    <p class="card-desc">We pick a recipe and cook it "together" on video.</p>
+                </div>
+                <div class="card glass-panel" onclick="window.selectOption('menu', 'Just Drinks', this)">
+                    <div class="check-icon">✓</div>
+                    <div class="emoji">☕</div>
+                    <p class="card-title">Just Drinks</p>
+                    <p class="card-desc">Tea, coffee, or wine. Keeping it light.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section glass-panel">
+            <div class="section-title">🎬 Step 3: The Main Event</div>
+            <div class="grid" id="activity-grid">
+                <div class="card glass-panel" onclick="window.selectOption('activity', 'Watch Party', this)">
+                    <div class="check-icon">✓</div>
+                    <div class="emoji">🍿</div>
+                    <p class="card-title">Teleparty</p>
+                    <p class="card-desc">Syncing up a movie or a trashy reality show.</p>
+                </div>
+                <div class="card glass-panel" onclick="window.selectOption('activity', 'Game Night', this)">
+                    <div class="check-icon">✓</div>
+                    <div class="emoji">🎲</div>
+                    <p class="card-title">Game Night</p>
+                    <p class="card-desc">Codenames, GeoGuessr, or an online escape room.</p>
+                </div>
+                <div class="card glass-panel" onclick="window.selectOption('activity', 'Question Cards', this)">
+                    <div class="check-icon">✓</div>
+                    <div class="emoji">🃏</div>
+                    <p class="card-title">Question Deck</p>
+                    <p class="card-desc">Taking turns asking fun/deep questions.</p>
+                </div>
+                <div class="card glass-panel" onclick="window.selectOption('activity', 'PowerPoint Night', this)">
+                    <div class="check-icon">✓</div>
+                    <div class="emoji">📊</div>
+                    <p class="card-title">PowerPoint Night</p>
+                    <p class="card-desc">5-minute presentations on highly niche topics.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section glass-panel">
+            <div class="section-title">📝 Step 4: Any special requests?</div>
+            <textarea id="extraNotes" rows="3" placeholder="e.g. 'I am allergic to peanuts!' or 'Can we do Saturday night?'"></textarea>
+        </div>
+
+    </div>
+
+    <div class="footer">
+        <div class="footer-glass"></div>
+        <button id="submitBtn" class="submit-btn" disabled onclick="window.submitDate()">Checkout & Lock it in 🔒</button>
+    </div>
+
+    <div id="success-screen">
+        <div class="receipt-card">
+            <div class="receipt-header">
+                <h2>ORDER CONFIRMED</h2>
+                <p>ORDER #<span id="order-number"></span></p>
+                <p id="order-date"></p>
+            </div>
+            
+            <div class="receipt-details">
+                <div class="receipt-row">
+                    <span class="receipt-label">CUSTOMER:</span>
+                    <span class="receipt-value">Nayanika</span>
+                </div>
+                <br>
+                <div class="receipt-row">
+                    <span class="receipt-label">VIBE:</span>
+                    <span class="receipt-value" id="receipt-vibe"></span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">MENU:</span>
+                    <span class="receipt-value" id="receipt-menu"></span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">EVENT:</span>
+                    <span class="receipt-value" id="receipt-activity"></span>
+                </div>
+                
+                <div id="receipt-notes-container" class="receipt-row" style="display: none; margin-top: 10px; color: #777;">
+                    <span class="receipt-label">NOTES:</span>
+                    <span class="receipt-value" id="receipt-notes" style="font-weight: normal; font-style: italic;"></span>
+                </div>
+            </div>
+            
+            <div class="receipt-total">
+                <span>TOTAL COST:</span>
+                <span>$0.00 (On me)</span>
+            </div>
+            
+            <div class="receipt-footer">
+                Your itinerary has been sent to my database.<br>I can't wait! 🥰
+            </div>
+
+            <button class="share-btn" onclick="window.shareReceipt()">
+                Share Receipt 📤
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 🛑 PASTE YOUR SUPABASE URL & PUBLISHABLE KEY HERE
+        // ==========================================
+        const SUPABASE_URL = 'https://biehsaadhtjeuibmasom.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_iB0Pm0Dg4NnKBJFm_7MAgw_qXwUaU0i';
+        const TABLE_NAME = 'responses'; 
+        
+        // Initialize state
+        window.dateChoices = { 
+            she_said_yes: false,
+            vibe: null, 
+            menu: null, 
+            activity: null 
+        };
+
+        // --- GDPR POPUP LOGIC ---
+        window.acceptTerms = function() {
+            document.getElementById('gdpr-modal').style.opacity = '0';
+            setTimeout(() => { document.getElementById('gdpr-modal').style.display = 'none'; }, 400);
+            window.dateChoices.she_said_yes = true;
+            window.checkIfComplete();
+        };
+
+        window.declineTerms = function() {
+            alert("Error 406: Not Acceptable. Our servers require you to have a good time. Please try the other button.");
+        };
+
+        // Initialize Supabase safely
+        let supabaseClient = null;
+        try {
+            if(!SUPABASE_URL.includes('YOUR-PROJECT-ID') && window.supabase) {
+                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            }
+        } catch(e) { console.error("Supabase init failed", e); }
+
+        window.selectOption = function(category, value, cardElement) {
+            window.dateChoices[category] = value;
+
+            const grid = document.getElementById(category + '-grid');
+            const allCards = grid.querySelectorAll('.card');
+            allCards.forEach(c => c.classList.remove('selected'));
+
+            cardElement.classList.add('selected');
+            window.checkIfComplete();
+        };
+
+        window.checkIfComplete = function() {
+            const btn = document.getElementById('submitBtn');
+            if (window.dateChoices.she_said_yes && window.dateChoices.vibe && window.dateChoices.menu && window.dateChoices.activity) {
+                btn.disabled = false;
+                btn.innerText = "Checkout & Lock it in 🔒";
+            }
+        }
+
+        window.submitDate = async function() {
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.innerText = "Processing... 🚀";
+
+            const userNotes = document.getElementById('extraNotes').value;
+
+            if (supabaseClient) {
+                try {
+                    const payload = {
+                        she_said_yes: window.dateChoices.she_said_yes,
+                        date_preference: {
+                            vibe: window.dateChoices.vibe,
+                            menu: window.dateChoices.menu,
+                            activity: window.dateChoices.activity
+                        },
+                        notes: userNotes || null
+                    };
+
+                    const { error } = await supabaseClient
+                        .from(TABLE_NAME)
+                        .insert([payload]);
+
+                    if (error) throw error;
+                } catch (err) {
+                    console.error(err);
+                    alert("Oops! There was a glitch saving the order. Just text me what you picked!");
+                    btn.disabled = false;
+                    btn.innerText = "Try Again";
+                    return; 
+                }
+            } else {
+                console.warn("Supabase not connected. Faking success.");
+                await new Promise(r => setTimeout(r, 800));
+            }
+
+            // Populate the Receipt
+            document.getElementById('receipt-vibe').innerText = window.dateChoices.vibe;
+            document.getElementById('receipt-menu').innerText = window.dateChoices.menu;
+            document.getElementById('receipt-activity').innerText = window.dateChoices.activity;
+            
+            // Random Order Number and Date
+            document.getElementById('order-number').innerText = Math.floor(Math.random() * 90000) + 10000;
+            const today = new Date();
+            document.getElementById('order-date').innerText = today.toLocaleDateString() + ' ' + today.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+            if(userNotes) {
+                document.getElementById('receipt-notes-container').style.display = 'flex';
+                document.getElementById('receipt-notes').innerText = `"${userNotes}"`;
+            }
+
+            // Show Success Screen 
+            document.getElementById('success-screen').classList.add('visible');
+            window.scrollTo(0, 0);
+        };
+
+        // --- NATIVE SHARE API LOGIC ---
+        window.shareReceipt = async function() {
+            const notesText = document.getElementById('extraNotes').value ? `\n📝 Notes: "${document.getElementById('extraNotes').value}"` : '';
+            const textToShare = `Our Virtual Date Itinerary! 🧾🍷\n\n✨ Vibe: ${window.dateChoices.vibe}\n🍕 Menu: ${window.dateChoices.menu}\n🎬 Activity: ${window.dateChoices.activity}${notesText}\n\nCan't wait! 🥰`;
+
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: 'Our Date Itinerary',
+                        text: textToShare
+                    });
+                } catch (err) {
+                    console.error('Share failed or was cancelled', err);
+                }
+            } else {
+                navigator.clipboard.writeText(textToShare);
+                alert("Receipt copied to your clipboard! You can paste it in our chat.");
+            }
+        };
+    </script>
+</body>
+</html>
